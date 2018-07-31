@@ -78,6 +78,47 @@ var getStatus = function () {
 };
 
 
+chrome.webRequest.onBeforeRequest.addListener(function (details) {
+        var config = getConfig();
+        try {
+            config = JSON.parse(config);
+        }catch (e) {
+            return;
+        }
+
+        let checkUrl = function checkUrl(url) {
+            let check = false;
+            config.urls.forEach(function (mockerUrl) {
+                if (url.indexOf(mockerUrl) > -1) {
+                    check = true;
+                }
+            });
+            return check;
+        };
+
+        if(getStatus() && !config.record && details.initiator.indexOf(config.page)>-1){
+            if(checkUrl(details.url) && details.url.indexOf('callback')>-1 && details.url.indexOf(config.origin)===-1){
+                let mockerOrigin = '//'+config.origin;
+                let url = '';
+                let s= details.url.match(/callback=([^&]+)/);
+                if(details.initiator.indexOf('https://')>-1){
+                    url = 'https://'+mockerOrigin+'/api/mock?ac=get&callback='+s[1]+'&token=' + config.token + '&url=' + encodeURIComponent(details.url);
+                }else{
+                    url = 'http://'+mockerOrigin+'/api/mock?ac=get&callback='+s[1]+'&token=' + config.token + '&url=' + encodeURIComponent(details.url);
+                }
+                console.log(details.url);
+                return {redirectUrl: url};
+            }else{
+                return undefined;
+            }
+
+        }
+    },
+    {urls: ["<all_urls>"],
+        types: ["script"]},
+    ["blocking"]
+);
+
 
 
 
